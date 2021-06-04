@@ -4,3 +4,14 @@ steps:
   timeout: 500s
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/hyscale-dev-env/hyscale/build/test:test']
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Clone env repository
+  entrypoint: /bin/sh
+  args:
+  - '-c'
+  - |
+    git clone https://github.com/srujankujmar/deploy.git
+    cd deploy && \
+    git config user.email "srujan.gourishetty@hyscale.io"
+
