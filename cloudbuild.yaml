@@ -13,7 +13,8 @@ steps:
   - |
     git clone https://github.com/srujankujmar/deploy.git
     cd deploy && \
-    git config user.email "srujan.gourishetty@hyscale.io"
+    git config --global user.name "srujankujmar"
+    git config user.email "srujankumar.gourishetty@gmail.com"
     touch test
     git add .
     git commit -m "test push"
