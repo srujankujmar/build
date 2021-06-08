@@ -1,22 +1,56 @@
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/hyscale-dev-env/hyscale/build/test:test', '.']
-  timeout: 500s
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/hyscale-dev-env/hyscale/build/test:test']
+# This step runs the unit tests on the app
 
+# This step builds the container image.
+- name: 'gcr.io/cloud-builders/docker'
+  id: Build
+  args:
+  - 'build'
+  - '-t'
+  - 'gcr.io/hyscale-dev-env/hello-cloudbuild:$SHORT_SHA'
+  - '.'
+
+# This step pushes the image to Container Registry
+# The PROJECT_ID and SHORT_SHA variables are automatically
+# replaced by Cloud Build.
+- name: 'gcr.io/cloud-builders/docker'
+  id: Push
+  args:
+  - 'push'
+  - 'gcr.io/hyscale-dev-env/hello-cloudbuild:$SHORT_SHA'
+
+# This step clones the hello-cloudbuild-env repository
 - name: 'gcr.io/cloud-builders/gcloud'
   id: Clone env repository
   entrypoint: /bin/sh
   args:
   - '-c'
   - |
-    git clone https://github.com/srujankujmar/deploy.git
+    gcloud source repos clone deploy && \
     cd deploy && \
-    git config --global user.name "srujankujmar"
-    git config user.email "srujankumar.gourishetty@gmail.com"
-    touch test
-    git add .
-    git commit -m "test push"
-    git push origin main
+    git config user.email $(gcloud auth list --filter=status:ACTIVE --format='value(account)')
 
+# This step generates the new manifest
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Generate manifest
+  entrypoint: /bin/sh
+  args:
+  - '-c'
+  - |
+     sed "s/GOOGLE_CLOUD_PROJECT/${PROJECT_ID}/g" deploy/kubernetes.yaml.tpl | \
+     sed "s/COMMIT_SHA/${SHORT_SHA}/g" > deploy/kubernetes.yaml
+
+# This step pushes the manifest back to hello-cloudbuild-env
+- name: 'gcr.io/cloud-builders/gcloud'
+  id: Push manifest
+  entrypoint: /bin/sh
+  args:
+  - '-c'
+  - |
+    set -x && \
+    cd deploy && \
+    git add kubernetes.yaml && \
+    git commit -m "Deploying image gcr.io/${PROJECT_ID}/hello-cloudbuild:${SHORT_SHA}
+    Built from commit ${COMMIT_SHA} of repository hello-cloudbuild-app
+    Author: $(git log --format='%an <%ae>' -n 1 HEAD)" && \
+    git push origin master

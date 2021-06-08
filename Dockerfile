@@ -1,3 +1,6 @@
-FROM ubuntu:18.04
-COPY scripts/app.sh /var/tmp/
-ENTRYPOINT ["/bin/bash","/var/tmp/app.sh"]
+FROM python:3.7-slim
+RUN pip install flask
+WORKDIR /app
+COPY app.py /app/app.py
+ENTRYPOINT ["python"]
+CMD ["/app/app.py"]
